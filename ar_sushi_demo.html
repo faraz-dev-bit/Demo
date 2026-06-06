@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR Menu — Sushi Demo</title>
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,400&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --ink: #0A0A0A;
+  --ink2: #141414;
+  --gold: #D4A853;
+  --gold2: #F0C96A;
+  --cream: #F7F2E8;
+  --muted: rgba(247,242,232,0.45);
+  --border: rgba(212,168,83,0.2);
+  --red: #C94040;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--ink);
+  color: var(--cream);
+  font-family: 'Space Grotesk', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--ink2);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+.topbar-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  color: var(--cream);
+}
+
+.topbar-logo span { color: var(--gold); font-style: italic; }
+
+.ar-live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(201,64,64,0.15);
+  border: 1px solid rgba(201,64,64,0.3);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #E88080;
+}
+
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--red);
+  border-radius: 50%;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+/* Restaurant header */
+.rest-header {
+  text-align: center;
+  padding: 28px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(212,168,83,0.05) 0%, transparent 100%);
+}
+
+.rest-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 34px;
+  font-weight: 600;
+  color: var(--cream);
+  margin-bottom: 4px;
+}
+
+.rest-sub {
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+/* Dish selector */
+.dish-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--ink2);
+}
+.dish-tabs::-webkit-scrollbar { display: none; }
+
+.dish-tab {
+  flex-shrink: 0;
+  padding: 14px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.dish-tab.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+  background: rgba(212,168,83,0.05);
+}
+
+/* model-viewer container */
+.viewer-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 380px;
+}
+
+model-viewer {
+  width: 100%;
+  flex: 1;
+  min-height: 380px;
+  background: radial-gradient(ellipse at center, #1a1710 0%, #0a0a0a 100%);
+  --progress-bar-color: #D4A853;
+}
+
+/* AR button override */
+model-viewer::part(default-ar-button) {
+  display: none;
+}
+
+/* Scan corner decorations */
+.scan-corners {
+  position: absolute;
+  inset: 16px;
+  pointer-events: none;
+}
+
+.corner {
+  position: absolute;
+  width: 20px; height: 20px;
+  border-color: rgba(212,168,83,0.5);
+  border-style: solid;
+}
+.corner.tl { top:0; left:0; border-width: 2px 0 0 2px; }
+.corner.tr { top:0; right:0; border-width: 2px 2px 0 0; }
+.corner.bl { bottom:0; left:0; border-width: 0 0 2px 2px; }
+.corner.br { bottom:0; right:0; border-width: 0 2px 2px 0; }
+
+/* Rotate hint */
+.rotate-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10,10,10,0.8);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  pointer-events: none;
+  white-space: nowrap;
+  animation: fadeout 4s ease 2s forwards;
+}
+
+@keyframes fadeout {
+  0% { opacity:1; }
+  100% { opacity:0; }
+}
+
+/* Dish info card */
+.dish-info {
+  background: var(--ink2);
+  border-top: 1px solid var(--border);
+  padding: 20px;
+}
+
+.dish-info-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.dish-name-big {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--cream);
+  line-height: 1.1;
+}
+
+.dish-price-big {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+
+.dish-desc-text {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.dish-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.dtag {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+/* AR Launch button */
+.ar-btn {
+  width: 100%;
+  background: var(--gold);
+  border: none;
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.25s;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.ar-btn:hover, .ar-btn:active {
+  background: var(--gold2);
+  transform: scale(1.01);
+  box-shadow: 0 8px 30px rgba(212,168,83,0.3);
+}
+
+.ar-btn-icon { font-size: 18px; }
+
+.ar-note {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(247,242,232,0.25);
+  letter-spacing: 0.5px;
+}
+
+/* Add to order */
+.order-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 13px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cream);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.25s;
+  margin-top: 8px;
+}
+
+.order-btn:hover {
+  border-color: rgba(212,168,83,0.5);
+  color: var(--gold);
+}
+
+/* Powered by */
+.powered {
+  text-align: center;
+  padding: 12px;
+  font-size: 10px;
+  color: rgba(247,242,232,0.2);
+  letter-spacing: 1px;
+  border-top: 1px solid var(--border);
+}
+.powered span { color: var(--gold); opacity: 0.5; }
+
+/* AR not supported message */
+.ar-unsupported {
+  display: none;
+  background: rgba(212,168,83,0.08);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 8px;
+}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-logo">AR <span>Menu</span></div>
+  <div class="ar-live-badge">
+    <div class="live-dot"></div>
+    AR Ready
+  </div>
+</div>
+
+<!-- Restaurant name -->
+<div class="rest-header">
+  <div class="rest-name">Sakura Japanese</div>
+  <div class="rest-sub">Scan • View in 3D • Order</div>
+</div>
+
+<!-- Dish tabs -->
+<div class="dish-tabs">
+  <div class="dish-tab active" onclick="selectDish(0, this)">🍣 Sushi Platter</div>
+  <div class="dish-tab" onclick="selectDish(1, this)">🥢 Maki Roll</div>
+  <div class="dish-tab" onclick="selectDish(2, this)">🍱 Bento Box</div>
+  <div class="dish-tab" onclick="selectDish(3, this)">🍜 Ramen</div>
+</div>
+
+<!-- 3D Viewer -->
+<div class="viewer-wrap">
+  <model-viewer
+    id="mv"
+    src="sushi.glb"
+    alt="Sushi Platter 3D Model"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    camera-controls
+    auto-rotate
+    auto-rotate-delay="1000"
+    rotation-per-second="20deg"
+    shadow-intensity="1.5"
+    shadow-softness="0.8"
+    exposure="1.3"
+    environment-image="neutral"
+    camera-orbit="0deg 75deg 2m"
+    min-camera-orbit="auto auto 0.5m"
+    max-camera-orbit="auto auto 4m"
+  >
+    <!-- Hidden native AR button — we use our own -->
+    <button slot="ar-button" style="display:none;"></button>
+  </model-viewer>
+
+  <div class="scan-corners">
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+  </div>
+
+  <div class="rotate-hint">👆 Drag to rotate • Pinch to zoom</div>
+</div>
+
+<!-- Dish info -->
+<div class="dish-info">
+  <div class="dish-info-top">
+    <div class="dish-name-big" id="dishName">Sushi Platter</div>
+    <div class="dish-price-big" id="dishPrice">₹850</div>
+  </div>
+  <div class="dish-desc-text" id="dishDesc">
+    Premium 12-piece assorted sushi platter. Fresh salmon, tuna, and prawn nigiri with California maki rolls. Served with wasabi, pickled ginger and soy sauce.
+  </div>
+  <div class="dish-tags" id="dishTags">
+    <span class="dtag">🐟 Non-Veg</span>
+    <span class="dtag">⭐ Chef's Special</span>
+    <span class="dtag">🌶 Mild</span>
+    <span class="dtag">12 Pieces</span>
+  </div>
+
+  <!-- AR Launch -->
+  <button class="ar-btn" id="arLaunchBtn" onclick="launchAR()">
+    <span class="ar-btn-icon">📷</span>
+    Place on Your Table in AR
+  </button>
+  <div class="ar-note">Point camera at flat surface • No app needed</div>
+  <div class="ar-unsupported" id="arUnsupported">
+    📱 AR works on <strong>Android Chrome</strong> or <strong>iPhone Safari</strong>.<br>
+    Open this link on your phone for the full AR experience!
+  </div>
+
+  <button class="order-btn" onclick="addOrder()">
+    + Add to Order
+  </button>
+</div>
+
+<div class="powered">Powered by <span>NexaAI Web</span> • AR Menu Technology</div>
+
+<script>
+const dishes = [
+  {
+    name: "Sushi Platter",
+    price: "₹850",
+    desc: "Premium 12-piece assorted sushi platter. Fresh salmon, tuna, and prawn nigiri with California maki rolls. Served with wasabi, pickled ginger and soy sauce.",
+    tags: ["🐟 Non-Veg", "⭐ Chef's Special", "🌶 Mild", "12 Pieces"],
+    model: "sushi.glb",
+    orbit: "0deg 75deg 2m"
+  },
+  {
+    name: "Maki Roll (8pc)",
+    price: "₹420",
+    desc: "Classic maki rolls with fresh cucumber, avocado and crab stick. Hand-rolled in premium nori seaweed with perfectly seasoned sushi rice.",
+    tags: ["🥑 Semi-Veg", "🌿 Fresh", "8 Pieces"],
+    model: "sushi.glb",
+    orbit: "45deg 80deg 1.5m"
+  },
+  {
+    name: "Bento Box",
+    price: "₹650",
+    desc: "Complete Japanese meal — 4 nigiri, 4 maki rolls, edamame, miso soup and steamed rice. A full experience in one box.",
+    tags: ["🍱 Complete Meal", "⭐ Bestseller", "Best Value"],
+    model: "sushi.glb",
+    orbit: "90deg 70deg 2.5m"
+  },
+  {
+    name: "Tonkotsu Ramen",
+    price: "₹380",
+    desc: "Rich pork bone broth simmered 12 hours. Topped with chashu pork, soft-boiled egg, bamboo shoots, nori and spring onion.",
+    tags: ["🍜 Hot Soup", "🔥 Rich Broth", "Non-Veg"],
+    model: "sushi.glb",
+    orbit: "180deg 65deg 2m"
+  }
+];
+
+let currentDish = 0;
+
+function selectDish(index, tab) {
+  currentDish = index;
+  document.querySelectorAll('.dish-tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+
+  const d = dishes[index];
+  document.getElementById('dishName').textContent = d.name;
+  document.getElementById('dishPrice').textContent = d.price;
+  document.getElementById('dishDesc').textContent = d.desc;
+  document.getElementById('dishTags').innerHTML = d.tags.map(t => `<span class="dtag">${t}</span>`).join('');
+
+  const mv = document.getElementById('mv');
+  mv.src = d.model;
+  mv.setAttribute('camera-orbit', d.orbit);
+
+  // Reset unsupported msg
+  document.getElementById('arUnsupported').style.display = 'none';
+}
+
+function launchAR() {
+  const mv = document.getElementById('mv');
+
+  if (mv.canActivateAR) {
+    mv.activateAR();
+  } else {
+    // Show helpful message
+    document.getElementById('arUnsupported').style.display = 'block';
+
+    // Try scene-viewer fallback for Android
+    const modelUrl = encodeURIComponent(window.location.origin + '/sushi.glb');
+    const sceneViewerUrl = `intent://arvr.google.com/scene-viewer/1.0?file=${modelUrl}&mode=ar_preferred#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;end;`;
+
+    // Try opening scene viewer
+    setTimeout(() => {
+      try { window.location = sceneViewerUrl; } catch(e) {}
+    }, 500);
+  }
+}
+
+function addOrder() {
+  const btn = event.target;
+  btn.textContent = '✓ Added to Order!';
+  btn.style.borderColor = 'rgba(46,125,82,0.5)';
+  btn.style.color = '#5DBF8A';
+  setTimeout(() => {
+    btn.textContent = '+ Add to Order';
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }, 2000);
+}
+
+// Check AR support on load
+window.addEventListener('load', () => {
+  const mv = document.getElementById('mv');
+  mv.addEventListener('ar-status', (e) => {
+    console.log('AR:', e.detail.status);
+  });
+});
+</script>
+</body>
+</html>
